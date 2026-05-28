@@ -11,11 +11,6 @@ build/
 venv/
 env/
 
-# ML model files (large — push separately or use Git LFS)
-ml_model/model.pkl
-ml_model/le_gender.pkl
-ml_model/le_edu.pkl
-ml_model/le_emp.pkl
 
 # Node
 node_modules/
