@@ -153,7 +153,7 @@ export default function App() {
     setResult(null);
     setError(null);
     try {
-      const res = await axios.post("http://127.0.0.1:8000/predict", form);
+      const res = await axios.post("https://loan-risk-app-backend-main.onrender.com/predict", form);
       setResult(res.data);
       setHistory(prev => [{ input: form, result: res.data }, ...prev]);
     } catch {
