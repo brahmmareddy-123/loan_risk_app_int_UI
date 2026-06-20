@@ -2,16 +2,18 @@ import { useState } from "react";
 import axios from "axios";
 
 // ── Constants ─────────────────────────────────────────────────────
+const BACKEND_URL        = "https://loan-risk-app-backend-main.onrender.com"; // ✅ Render URL
 const GENDER_OPTIONS     = ["Male", "Female"];
 const EDUCATION_OPTIONS  = ["High School", "Bachelors", "Masters", "PhD"];
 const EMPLOYMENT_OPTIONS = ["Salaried", "Self-Employed", "Unemployed"];
 
+// ✅ Empty defaults — no pre-filled values
 const INITIAL_FORM = {
-  age: 30,
-  income: 55000,
-  loan_amount: 20000,
+  age: "",
+  income: "",
+  loan_amount: "",
   credit_score: 650,
-  years_experience: 5,
+  years_experience: "",
   gender: "Male",
   education: "Bachelors",
   employment_type: "Salaried",
@@ -35,6 +37,12 @@ function CreditScoreLabel({ score }) {
   if (score >= 650) return <span style={{ color: "#38bdf8", fontSize: 11 }}>Good</span>;
   if (score >= 500) return <span style={{ color: "#f97316", fontSize: 11 }}>Fair</span>;
   return <span style={{ color: "#f87171", fontSize: 11 }}>Poor</span>;
+}
+
+// ✅ Format number to INR
+function formatINR(value) {
+  if (!value && value !== 0) return "";
+  return Number(value).toLocaleString("en-IN");
 }
 
 // ── Sub-components ────────────────────────────────────────────────
@@ -70,32 +78,53 @@ function InputField({ label, sublabel, children }) {
   );
 }
 
-function NumberInput({ value, onChange, min, max, placeholder }) {
+// ✅ Fixed number input — no default 0, backspace works properly
+function NumberInput({ value, onChange, min, max, placeholder, prefix }) {
   return (
-    <input type="number" min={min} max={max}
-      placeholder={placeholder} value={value}
-      onChange={e => onChange(Number(e.target.value))}
-      style={{
-        background: "#0c1829", border: "1px solid #1e3a5f",
-        borderRadius: 10, padding: "11px 14px",
-        color: "#f1f5f9", fontSize: 14, outline: "none",
-        width: "100%", fontFamily: "inherit",
-        transition: "border 0.2s",
-      }}
-      onFocus={e => e.target.style.borderColor = "#38bdf8"}
-      onBlur={e => e.target.style.borderColor = "#1e3a5f"}
-    />
+    <div style={{ position: "relative" }}>
+      {prefix && (
+        <span style={{
+          position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+          color: "#64748b", fontSize: 14, pointerEvents: "none"
+        }}>{prefix}</span>
+      )}
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value === "" ? "" : value}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^0-9]/g, ""); // only digits
+          if (raw === "") {
+            onChange("");
+            return;
+          }
+          const num = Number(raw);
+          if (max && num > max) return;
+          onChange(num);
+        }}
+        style={{
+          background: "#0c1829", border: "1px solid #1e3a5f",
+          borderRadius: 10, padding: prefix ? "11px 14px 11px 28px" : "11px 14px",
+          color: "#f1f5f9", fontSize: 14, outline: "none",
+          width: "100%", fontFamily: "inherit",
+          transition: "border 0.2s",
+        }}
+        onFocus={e => e.target.style.borderColor = "#38bdf8"}
+        onBlur={e => e.target.style.borderColor = "#1e3a5f"}
+      />
+    </div>
   );
 }
 
 function HistoryTable({ history }) {
-  if (!history.length) return null;
+  if (!history.length) return (
+    <div style={{ textAlign: "center", color: "#475569", padding: "2rem", fontSize: 14 }}>
+      No predictions yet. Go to Predict tab and submit a form.
+    </div>
+  );
   return (
-    <div style={{ marginTop: "2rem" }}>
-      <h3 style={{ fontSize: 15, color: "#94a3b8", fontWeight: 600, marginBottom: 12,
-        borderBottom: "1px solid #1e293b", paddingBottom: 10 }}>
-        📋 Prediction History ({history.length})
-      </h3>
+    <div style={{ marginTop: "0.5rem" }}>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
@@ -114,8 +143,8 @@ function HistoryTable({ history }) {
                   background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
                   <td style={{ padding: "8px 10px", color: "#475569" }}>{i + 1}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.age}</td>
-                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>${row.input.income.toLocaleString()}</td>
-                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>${row.input.loan_amount.toLocaleString()}</td>
+                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>₹{Number(row.input.income).toLocaleString("en-IN")}</td>
+                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>₹{Number(row.input.loan_amount).toLocaleString("en-IN")}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.credit_score}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.employment_type}</td>
                   <td style={{ padding: "8px 10px" }}>
@@ -144,20 +173,48 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const [history, setHistory] = useState([]);
-  const [tab, setTab]         = useState("form"); // "form" | "history"
+  const [tab, setTab]         = useState("form");
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
+  // ✅ Validate before submit
+  const validate = () => {
+    if (form.age === "" || form.age < 18 || form.age > 69)
+      return "Please enter a valid Age (18–69)";
+    if (form.income === "" || form.income < 0)
+      return "Please enter a valid Annual Income";
+    if (form.loan_amount === "" || form.loan_amount < 0)
+      return "Please enter a valid Loan Amount";
+    if (form.years_experience === "" || form.years_experience < 0)
+      return "Please enter valid Work Experience";
+    return null;
+  };
+
   const handleSubmit = async () => {
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
+
     setLoading(true);
     setResult(null);
     setError(null);
+
+    const payload = {
+      age:              Number(form.age),
+      income:           Number(form.income),
+      loan_amount:      Number(form.loan_amount),
+      credit_score:     Number(form.credit_score),
+      years_experience: Number(form.years_experience),
+      gender:           form.gender,
+      education:        form.education,
+      employment_type:  form.employment_type,
+    };
+
     try {
-      const res = await axios.post("https://loan-risk-app-backend-main.onrender.com/predict", form);
+      const res = await axios.post(`${BACKEND_URL}/predict`, payload);
       setResult(res.data);
       setHistory(prev => [{ input: form, result: res.data }, ...prev]);
     } catch {
-      setError("❌ Cannot connect to backend. Make sure FastAPI is running on port 8000.");
+      setError("❌ Cannot connect to backend. Check if Render service is live at: " + BACKEND_URL);
     }
     setLoading(false);
   };
@@ -169,6 +226,10 @@ export default function App() {
   };
 
   const riskColor = result ? getRiskColor(result.risk_label) : null;
+
+  // ✅ Loan to income warning only when both have values
+  const showWarning = form.income && form.loan_amount &&
+    Number(form.loan_amount) > Number(form.income) * 0.6;
 
   return (
     <div style={{ minHeight: "100vh", background: "#060b18",
@@ -202,8 +263,7 @@ export default function App() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1e293b",
-          marginTop: "1.25rem" }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1e293b", marginTop: "1.25rem" }}>
           {["form", "history"].map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{
@@ -211,8 +271,7 @@ export default function App() {
                 cursor: "pointer", fontSize: 14, fontFamily: "inherit",
                 color: tab === t ? "#38bdf8" : "#475569",
                 borderBottom: tab === t ? "2px solid #38bdf8" : "2px solid transparent",
-                fontWeight: tab === t ? 600 : 400, transition: "all 0.2s",
-                marginBottom: -1,
+                fontWeight: tab === t ? 600 : 400, transition: "all 0.2s", marginBottom: -1,
               }}>
               {t === "form" ? "🔍 Predict" : `📋 History (${history.length})`}
             </button>
@@ -222,22 +281,22 @@ export default function App() {
 
       {/* ── Main Card ── */}
       <div style={{ width: "100%", maxWidth: 780,
-        background: "#0d1526", borderRadius: 20,
-        border: "1px solid #1e293b",
+        background: "#0d1526", borderRadius: 20, border: "1px solid #1e293b",
         boxShadow: "0 30px 80px rgba(0,0,0,0.6)", padding: "2rem" }}>
 
         {tab === "history" ? (
           <HistoryTable history={history} />
         ) : (
           <>
-            {/* ── Section: Personal Info ── */}
+            {/* ── Personal Info ── */}
             <p style={{ fontSize: 11, color: "#38bdf8", fontWeight: 600,
               letterSpacing: "0.1em", marginBottom: 14 }}>PERSONAL INFORMATION</p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.75rem" }}>
               <InputField label="Age">
                 <NumberInput value={form.age} min={18} max={69}
-                  placeholder="18 – 69" onChange={v => set("age", v)} />
+                  placeholder="Enter age (18–69)"
+                  onChange={v => set("age", v)} />
               </InputField>
 
               <InputField label="Gender">
@@ -256,24 +315,29 @@ export default function App() {
               </InputField>
             </div>
 
-            {/* ── Section: Financial Info ── */}
+            {/* ── Financial Info ── */}
             <p style={{ fontSize: 11, color: "#38bdf8", fontWeight: 600,
               letterSpacing: "0.1em", marginBottom: 14 }}>FINANCIAL INFORMATION</p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.75rem" }}>
-              <InputField label="Annual Income ($)">
-                <NumberInput value={form.income} min={0} max={100000}
-                  placeholder="e.g. 55000" onChange={v => set("income", v)} />
+              <InputField label="Annual Income (₹)">
+                <NumberInput value={form.income} min={0}
+                  placeholder="Enter income in ₹"
+                  prefix="₹"
+                  onChange={v => set("income", v)} />
               </InputField>
 
-              <InputField label="Loan Amount ($)">
-                <NumberInput value={form.loan_amount} min={0} max={50000}
-                  placeholder="e.g. 20000" onChange={v => set("loan_amount", v)} />
+              <InputField label="Loan Amount (₹)">
+                <NumberInput value={form.loan_amount} min={0}
+                  placeholder="Enter loan amount in ₹"
+                  prefix="₹"
+                  onChange={v => set("loan_amount", v)} />
               </InputField>
 
               <InputField label="Work Experience (Years)">
                 <NumberInput value={form.years_experience} min={0} max={39}
-                  placeholder="0 – 39" onChange={v => set("years_experience", v)} />
+                  placeholder="Enter years (0–39)"
+                  onChange={v => set("years_experience", v)} />
               </InputField>
 
               <InputField
@@ -290,8 +354,8 @@ export default function App() {
               </InputField>
             </div>
 
-            {/* ── Loan to Income Ratio Warning ── */}
-            {form.loan_amount > form.income * 0.6 && (
+            {/* ── Warning ── */}
+            {showWarning && (
               <div style={{ background: "#1c0f00", border: "1px solid #92400e",
                 borderRadius: 10, padding: "10px 14px", marginBottom: "1.25rem",
                 fontSize: 13, color: "#fdba74", display: "flex", gap: 8, alignItems: "center" }}>
@@ -334,14 +398,13 @@ export default function App() {
               </div>
             )}
 
-            {/* ── Result Card ── */}
+            {/* ── Result ── */}
             {result && riskColor && (
               <div style={{ marginTop: "1.5rem", borderRadius: 16,
                 border: `1.5px solid ${riskColor.border}`,
                 background: riskColor.bg, padding: "1.5rem",
                 animation: "fadeIn 0.4s ease" }}>
 
-                {/* Result Header */}
                 <div style={{ display: "flex", alignItems: "center",
                   justifyContent: "space-between", marginBottom: "1.25rem" }}>
                   <div>
@@ -349,7 +412,9 @@ export default function App() {
                       {getRiskEmoji(result.risk_label)} {result.risk_label}
                     </div>
                     <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>
-                      {result.approved ? "Loan application likely to be approved" : "Loan application likely to be rejected"}
+                      {result.approved
+                        ? "Loan application likely to be approved"
+                        : "Loan application likely to be rejected"}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -360,7 +425,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Probability Bar */}
                 <div style={{ height: 8, background: "#1e293b",
                   borderRadius: 99, overflow: "hidden", marginBottom: "1.25rem" }}>
                   <div style={{
@@ -373,7 +437,6 @@ export default function App() {
                   }} />
                 </div>
 
-                {/* Approval vs Rejection Stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
                   gap: 12, marginBottom: "1.25rem" }}>
                   {[
@@ -389,7 +452,6 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Risk Factors */}
                 <div>
                   <p style={{ fontSize: 12, color: "#64748b", fontWeight: 600,
                     letterSpacing: "0.08em", marginBottom: 10 }}>RISK FACTORS DETECTED</p>
@@ -397,8 +459,7 @@ export default function App() {
                     {result.risk_factors.map((f, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center",
                         gap: 8, fontSize: 13, color: "#cbd5e1" }}>
-                        <span style={{ color: result.approved ? "#4ade80" : "#f97316",
-                          fontSize: 10 }}>●</span>
+                        <span style={{ color: result.approved ? "#4ade80" : "#f97316", fontSize: 10 }}>●</span>
                         {f}
                       </div>
                     ))}
@@ -411,7 +472,7 @@ export default function App() {
       </div>
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulse  { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
       `}</style>
     </div>
