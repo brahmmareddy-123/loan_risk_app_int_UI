@@ -12,9 +12,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ✅ Fixed CORS — allow all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -34,26 +36,23 @@ except FileNotFoundError:
 
 # ── Request Schema ────────────────────────────────────────────────
 class LoanInput(BaseModel):
-    age:              int   = Field(..., ge=18, le=69,     example=30)
-    income:           float = Field(..., ge=0,  le=100000, example=55000)
-    loan_amount:      float = Field(..., ge=0,  le=50000,  example=20000)
-    credit_score:     float = Field(..., ge=300, le=849,   example=680)
-    years_experience: int   = Field(..., ge=0,  le=39,     example=5)
+    age:              int   = Field(..., ge=18, le=69,      example=30)
+    income:           float = Field(..., ge=0,              example=55000)
+    loan_amount:      float = Field(..., ge=0,              example=20000)
+    credit_score:     float = Field(..., ge=300, le=849,    example=680)
+    years_experience: int   = Field(..., ge=0,  le=39,      example=5)
     gender:           str   = Field(..., example="Male")
     education:        str   = Field(..., example="Bachelors")
     employment_type:  str   = Field(..., example="Salaried")
 
 
-# ── Prediction Logic ──────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────
 def get_risk_level(prob: float) -> str:
-    if prob >= 0.70:
-        return "Low Risk"
-    elif prob >= 0.45:
-        return "Medium Risk"
-    else:
-        return "High Risk"
+    if prob >= 0.70: return "Low Risk"
+    if prob >= 0.45: return "Medium Risk"
+    return "High Risk"
 
-def get_risk_factors(data: LoanInput, prob: float) -> list[str]:
+def get_risk_factors(data: LoanInput, prob: float) -> list:
     factors = []
     if data.credit_score < 500:
         factors.append("Very low credit score (below 500)")
@@ -95,15 +94,15 @@ def predict(data: LoanInput):
 
     prediction  = model.predict(features)[0]
     probability = model.predict_proba(features)[0]
-    approval_prob    = round(float(probability[1]) * 100, 1)
-    rejection_prob   = round(float(probability[0]) * 100, 1)
+    approval_prob  = round(float(probability[1]) * 100, 1)
+    rejection_prob = round(float(probability[0]) * 100, 1)
 
     return {
-        "approved":             int(prediction),
-        "risk_label":           get_risk_level(float(probability[1])),
-        "approval_probability": approval_prob,
-        "rejection_probability":rejection_prob,
-        "risk_factors":         get_risk_factors(data, float(probability[1])),
+        "approved":              int(prediction),
+        "risk_label":            get_risk_level(float(probability[1])),
+        "approval_probability":  approval_prob,
+        "rejection_probability": rejection_prob,
+        "risk_factors":          get_risk_factors(data, float(probability[1])),
         "input_summary": {
             "age":              data.age,
             "income":           data.income,
