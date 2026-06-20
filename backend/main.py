@@ -5,14 +5,12 @@ import joblib
 import numpy as np
 import os
 
-# ── App Setup ─────────────────────────────────────────────────────
 app = FastAPI(
     title="Loan Risk Prediction API",
     description="AI-powered loan risk assessment using RandomForest",
     version="1.0.0"
 )
 
-# ✅ Fixed CORS — allow all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Load Model & Encoders ─────────────────────────────────────────
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ml_model")
 
 try:
@@ -34,42 +31,92 @@ except FileNotFoundError:
     raise RuntimeError("❌ Model files not found. Run ml_model/train_model.py first.")
 
 
-# ── Request Schema ────────────────────────────────────────────────
 class LoanInput(BaseModel):
-    age:              int   = Field(..., ge=18, le=69,      example=30)
-    income:           float = Field(..., ge=0,              example=55000)
-    loan_amount:      float = Field(..., ge=0,              example=20000)
-    credit_score:     float = Field(..., ge=300, le=849,    example=680)
-    years_experience: int   = Field(..., ge=0,  le=39,      example=5)
+    age:              int   = Field(..., ge=18, le=69,   example=30)
+    income:           float = Field(..., ge=0,           example=55000)
+    loan_amount:      float = Field(..., ge=0,           example=20000)
+    credit_score:     float = Field(..., ge=300, le=849, example=680)
+    years_experience: int   = Field(..., ge=0,  le=39,   example=5)
     gender:           str   = Field(..., example="Male")
     education:        str   = Field(..., example="Bachelors")
     employment_type:  str   = Field(..., example="Salaried")
 
 
-# ── Helpers ───────────────────────────────────────────────────────
-def get_risk_level(prob: float) -> str:
-    if prob >= 0.40: return "Low Risk"
-    if prob >= 0.20: return "Medium Risk"
-    return "High Risk"
+def compute_smart_score(data: LoanInput) -> float:
+    """
+    Rule-based scoring system (0 to 100).
+    Higher score = lower risk = higher approval chance.
+    """
+    score = 0
 
-def get_risk_factors(data: LoanInput, prob: float) -> list:
+    # ── Credit Score (max 35 points) ──
+    if data.credit_score >= 750:   score += 35
+    elif data.credit_score >= 700: score += 28
+    elif data.credit_score >= 650: score += 20
+    elif data.credit_score >= 600: score += 13
+    elif data.credit_score >= 500: score += 6
+    else:                          score += 0
+
+    # ── Employment (max 20 points) ──
+    if data.employment_type == "Salaried":      score += 20
+    elif data.employment_type == "Self-Employed": score += 12
+    else:                                         score += 0  # Unemployed
+
+    # ── Loan to Income Ratio (max 20 points) ──
+    if data.income > 0:
+        ratio = data.loan_amount / data.income
+        if ratio <= 0.2:   score += 20
+        elif ratio <= 0.4: score += 15
+        elif ratio <= 0.6: score += 8
+        elif ratio <= 0.8: score += 3
+        else:              score += 0
+
+    # ── Work Experience (max 15 points) ──
+    if data.years_experience >= 10:  score += 15
+    elif data.years_experience >= 5: score += 11
+    elif data.years_experience >= 2: score += 6
+    else:                            score += 0
+
+    # ── Education (max 10 points) ──
+    edu_map = {"PhD": 10, "Masters": 8, "Bachelors": 6, "High School": 3}
+    score += edu_map.get(data.education, 4)
+
+    return score  # 0–100
+
+
+def get_risk_label_and_probs(score: float):
+    """Convert score to risk label and probabilities."""
+    approval_prob  = round(score, 1)
+    rejection_prob = round(100 - score, 1)
+
+    if score >= 60:
+        label    = "Low Risk"
+        approved = 1
+    elif score >= 35:
+        label    = "Medium Risk"
+        approved = 0
+    else:
+        label    = "High Risk"
+        approved = 0
+
+    return label, approved, approval_prob, rejection_prob
+
+
+def get_risk_factors(data: LoanInput) -> list:
     factors = []
-    if data.credit_score < 500:
-        factors.append("Very low credit score (below 500)")
-    elif data.credit_score < 600:
-        factors.append("Low credit score (below 600)")
+    if data.credit_score < 600:
+        factors.append(f"Low credit score ({int(data.credit_score)}) — aim for 650+")
     if data.employment_type == "Unemployed":
-        factors.append("Currently unemployed")
-    if data.loan_amount > data.income * 0.6:
-        factors.append("Loan amount is high relative to income")
+        factors.append("Currently unemployed — no stable income source")
+    if data.income > 0 and data.loan_amount / data.income > 0.6:
+        factors.append("Loan amount is too high relative to income")
     if data.years_experience < 2:
         factors.append("Less than 2 years of work experience")
     if data.income < 20000:
-        factors.append("Low annual income")
-    return factors if factors else ["No major risk factors detected"]
+        factors.append("Low annual income (below $20,000)")
+    return factors if factors else ["No major risk factors detected ✅"]
 
 
-# ── Routes ────────────────────────────────────────────────────────
 @app.get("/")
 def root():
     return {"message": "Loan Risk Prediction API is running ✅"}
@@ -81,28 +128,22 @@ def health():
 @app.post("/predict")
 def predict(data: LoanInput):
     try:
-        gender_enc = le_gender.transform([data.gender])[0]
-        edu_enc    = le_edu.transform([data.education])[0]
-        emp_enc    = le_emp.transform([data.employment_type])[0]
+        le_gender.transform([data.gender])
+        le_edu.transform([data.education])
+        le_emp.transform([data.employment_type])
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Invalid input value: {str(e)}")
 
-    features = np.array([[
-        data.age, data.income, data.loan_amount, data.credit_score,
-        data.years_experience, gender_enc, edu_enc, emp_enc
-    ]])
-
-    prediction  = model.predict(features)[0]
-    probability = model.predict_proba(features)[0]
-    approval_prob  = round(float(probability[1]) * 100, 1)
-    rejection_prob = round(float(probability[0]) * 100, 1)
+    # Smart rule-based score
+    score = compute_smart_score(data)
+    label, approved, approval_prob, rejection_prob = get_risk_label_and_probs(score)
 
     return {
-        "approved":              int(prediction),
-        "risk_label":            get_risk_level(float(probability[1])),
+        "approved":              approved,
+        "risk_label":            label,
         "approval_probability":  approval_prob,
         "rejection_probability": rejection_prob,
-        "risk_factors":          get_risk_factors(data, float(probability[1])),
+        "risk_factors":          get_risk_factors(data),
         "input_summary": {
             "age":              data.age,
             "income":           data.income,
