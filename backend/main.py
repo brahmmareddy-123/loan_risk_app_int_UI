@@ -48,8 +48,8 @@ class LoanInput(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────
 def get_risk_level(prob: float) -> str:
-    if prob >= 0.60: return "Low Risk"
-    if prob >= 0.35: return "Medium Risk"
+    if prob >= 0.40: return "Low Risk"
+    if prob >= 0.20: return "Medium Risk"
     return "High Risk"
 
 def get_risk_factors(data: LoanInput, prob: float) -> list:
