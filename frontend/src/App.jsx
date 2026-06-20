@@ -147,8 +147,8 @@ function HistoryTable({ history }) {
                 }}>
                   <td style={{ padding: "8px 10px", color: "#475569" }}>{i + 1}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.age}</td>
-                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>₹{Number(row.input.income).toLocaleString("en-IN")}</td>
-                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>₹{Number(row.input.loan_amount).toLocaleString("en-IN")}</td>
+                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>$${Number(row.input.income).toLocaleString()}</td>
+                  <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>$${Number(row.input.loan_amount).toLocaleString()}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.credit_score}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.employment_type}</td>
                   <td style={{ padding: "8px 10px" }}>
@@ -206,8 +206,8 @@ export default function App() {
 
     const payload = {
       age: Number(form.age),
-      income: Number(form.income) / 83,   // ✅ convert ₹ to $
-      loan_amount: Number(form.loan_amount) / 83, // ✅ convert ₹ to $
+      income: Number(form.income),
+      loan_amount: Number(form.loan_amount),
       credit_score: Number(form.credit_score),
       years_experience: Number(form.years_experience),
       gender: form.gender,
@@ -340,17 +340,17 @@ export default function App() {
             }}>FINANCIAL INFORMATION</p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.75rem" }}>
-              <InputField label="Annual Income (₹)">
+              <InputField label="Annual Income ($)">
                 <NumberInput value={form.income} min={0}
-                  placeholder="Enter income in ₹"
-                  prefix="₹"
+                  placeholder="Enter income in $"
+                  prefix="$"
                   onChange={v => set("income", v)} />
               </InputField>
 
-              <InputField label="Loan Amount (₹)">
+              <InputField label="Loan Amount ($)">
                 <NumberInput value={form.loan_amount} min={0}
-                  placeholder="Enter loan amount in ₹"
-                  prefix="₹"
+                  placeholder="Enter loan amount in $"
+                  prefix="$"
                   onChange={v => set("loan_amount", v)} />
               </InputField>
 
