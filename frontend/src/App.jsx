@@ -2,9 +2,9 @@ import { useState } from "react";
 import axios from "axios";
 
 // ── Constants ─────────────────────────────────────────────────────
-const BACKEND_URL        = "https://loan-risk-app-backend-main.onrender.com"; // ✅ Render URL
-const GENDER_OPTIONS     = ["Male", "Female"];
-const EDUCATION_OPTIONS  = ["High School", "Bachelors", "Masters", "PhD"];
+const BACKEND_URL = "https://loan-risk-app-backend-main.onrender.com"; // ✅ Render URL
+const GENDER_OPTIONS = ["Male", "Female"];
+const EDUCATION_OPTIONS = ["High School", "Bachelors", "Masters", "PhD"];
 const EMPLOYMENT_OPTIONS = ["Salaried", "Self-Employed", "Unemployed"];
 
 // ✅ Empty defaults — no pre-filled values
@@ -21,13 +21,13 @@ const INITIAL_FORM = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getRiskColor(label) {
-  if (label === "Low Risk")    return { bg: "#052e16", border: "#22c55e", text: "#4ade80" };
+  if (label === "Low Risk") return { bg: "#052e16", border: "#22c55e", text: "#4ade80" };
   if (label === "Medium Risk") return { bg: "#1c1007", border: "#f97316", text: "#fb923c" };
-  return                              { bg: "#2d0a0a", border: "#ef4444", text: "#f87171" };
+  return { bg: "#2d0a0a", border: "#ef4444", text: "#f87171" };
 }
 
 function getRiskEmoji(label) {
-  if (label === "Low Risk")    return "✅";
+  if (label === "Low Risk") return "✅";
   if (label === "Medium Risk") return "⚠️";
   return "❌";
 }
@@ -130,8 +130,10 @@ function HistoryTable({ history }) {
           <thead>
             <tr style={{ borderBottom: "1px solid #1e293b" }}>
               {["#", "Age", "Income", "Loan Amt", "Credit", "Employment", "Result", "Approval%"].map(h => (
-                <th key={h} style={{ padding: "8px 10px", color: "#64748b",
-                  fontWeight: 500, textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
+                <th key={h} style={{
+                  padding: "8px 10px", color: "#64748b",
+                  fontWeight: 500, textAlign: "left", whiteSpace: "nowrap"
+                }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -139,8 +141,10 @@ function HistoryTable({ history }) {
             {history.map((row, i) => {
               const c = getRiskColor(row.result.risk_label);
               return (
-                <tr key={i} style={{ borderBottom: "1px solid #0f1f38",
-                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
+                <tr key={i} style={{
+                  borderBottom: "1px solid #0f1f38",
+                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)"
+                }}>
                   <td style={{ padding: "8px 10px", color: "#475569" }}>{i + 1}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.age}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>₹{Number(row.input.income).toLocaleString("en-IN")}</td>
@@ -148,8 +152,10 @@ function HistoryTable({ history }) {
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.credit_score}</td>
                   <td style={{ padding: "8px 10px", color: "#e2e8f0" }}>{row.input.employment_type}</td>
                   <td style={{ padding: "8px 10px" }}>
-                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12,
-                      background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
+                    <span style={{
+                      padding: "3px 10px", borderRadius: 20, fontSize: 12,
+                      background: c.bg, color: c.text, border: `1px solid ${c.border}`
+                    }}>
                       {row.result.risk_label}
                     </span>
                   </td>
@@ -168,12 +174,12 @@ function HistoryTable({ history }) {
 
 // ── Main App ──────────────────────────────────────────────────────
 export default function App() {
-  const [form, setForm]       = useState(INITIAL_FORM);
-  const [result, setResult]   = useState(null);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
-  const [tab, setTab]         = useState("form");
+  const [tab, setTab] = useState("form");
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -199,14 +205,14 @@ export default function App() {
     setError(null);
 
     const payload = {
-      age:              Number(form.age),
-      income:           Number(form.income),
-      loan_amount:      Number(form.loan_amount),
-      credit_score:     Number(form.credit_score),
+      age: Number(form.age),
+      income: Number(form.income) / 83,   // ✅ convert ₹ to $
+      loan_amount: Number(form.loan_amount) / 83, // ✅ convert ₹ to $
+      credit_score: Number(form.credit_score),
       years_experience: Number(form.years_experience),
-      gender:           form.gender,
-      education:        form.education,
-      employment_type:  form.employment_type,
+      gender: form.gender,
+      education: form.education,
+      employment_type: form.employment_type,
     };
 
     try {
@@ -232,16 +238,20 @@ export default function App() {
     Number(form.loan_amount) > Number(form.income) * 0.6;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060b18",
+    <div style={{
+      minHeight: "100vh", background: "#060b18",
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "2rem 1rem", fontFamily: "Inter, sans-serif" }}>
+      padding: "2rem 1rem", fontFamily: "Inter, sans-serif"
+    }}>
 
       {/* ── Page Header ── */}
       <div style={{ width: "100%", maxWidth: 780, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 6 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12,
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
             background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22
+          }}>
             💳
           </div>
           <div>
@@ -252,12 +262,16 @@ export default function App() {
               AI-powered credit risk assessment system
             </p>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
+          <div style={{
+            marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
             background: "#052e16", border: "1px solid #166534", borderRadius: 20,
-            padding: "4px 12px", fontSize: 12, color: "#4ade80" }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%",
+            padding: "4px 12px", fontSize: 12, color: "#4ade80"
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%",
               background: "#4ade80", display: "inline-block",
-              animation: "pulse 2s infinite" }}></span>
+              animation: "pulse 2s infinite"
+            }}></span>
             API Live
           </div>
         </div>
@@ -280,17 +294,21 @@ export default function App() {
       </div>
 
       {/* ── Main Card ── */}
-      <div style={{ width: "100%", maxWidth: 780,
+      <div style={{
+        width: "100%", maxWidth: 780,
         background: "#0d1526", borderRadius: 20, border: "1px solid #1e293b",
-        boxShadow: "0 30px 80px rgba(0,0,0,0.6)", padding: "2rem" }}>
+        boxShadow: "0 30px 80px rgba(0,0,0,0.6)", padding: "2rem"
+      }}>
 
         {tab === "history" ? (
           <HistoryTable history={history} />
         ) : (
           <>
             {/* ── Personal Info ── */}
-            <p style={{ fontSize: 11, color: "#38bdf8", fontWeight: 600,
-              letterSpacing: "0.1em", marginBottom: 14 }}>PERSONAL INFORMATION</p>
+            <p style={{
+              fontSize: 11, color: "#38bdf8", fontWeight: 600,
+              letterSpacing: "0.1em", marginBottom: 14
+            }}>PERSONAL INFORMATION</p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.75rem" }}>
               <InputField label="Age">
@@ -316,8 +334,10 @@ export default function App() {
             </div>
 
             {/* ── Financial Info ── */}
-            <p style={{ fontSize: 11, color: "#38bdf8", fontWeight: 600,
-              letterSpacing: "0.1em", marginBottom: 14 }}>FINANCIAL INFORMATION</p>
+            <p style={{
+              fontSize: 11, color: "#38bdf8", fontWeight: 600,
+              letterSpacing: "0.1em", marginBottom: 14
+            }}>FINANCIAL INFORMATION</p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.75rem" }}>
               <InputField label="Annual Income (₹)">
@@ -348,17 +368,21 @@ export default function App() {
                     value={form.credit_score}
                     onChange={e => set("credit_score", Number(e.target.value))}
                     style={{ flex: 1 }} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: "#38bdf8",
-                    minWidth: 38, textAlign: "right" }}>{form.credit_score}</span>
+                  <span style={{
+                    fontSize: 15, fontWeight: 700, color: "#38bdf8",
+                    minWidth: 38, textAlign: "right"
+                  }}>{form.credit_score}</span>
                 </div>
               </InputField>
             </div>
 
             {/* ── Warning ── */}
             {showWarning && (
-              <div style={{ background: "#1c0f00", border: "1px solid #92400e",
+              <div style={{
+                background: "#1c0f00", border: "1px solid #92400e",
                 borderRadius: 10, padding: "10px 14px", marginBottom: "1.25rem",
-                fontSize: 13, color: "#fdba74", display: "flex", gap: 8, alignItems: "center" }}>
+                fontSize: 13, color: "#fdba74", display: "flex", gap: 8, alignItems: "center"
+              }}>
                 ⚠️ Loan amount is high relative to income — this may increase risk.
               </div>
             )}
@@ -391,22 +415,28 @@ export default function App() {
 
             {/* ── Error ── */}
             {error && (
-              <div style={{ marginTop: "1.25rem", background: "#2d0a0a",
+              <div style={{
+                marginTop: "1.25rem", background: "#2d0a0a",
                 border: "1px solid #ef4444", borderRadius: 10,
-                padding: "12px 16px", fontSize: 13, color: "#f87171" }}>
+                padding: "12px 16px", fontSize: 13, color: "#f87171"
+              }}>
                 {error}
               </div>
             )}
 
             {/* ── Result ── */}
             {result && riskColor && (
-              <div style={{ marginTop: "1.5rem", borderRadius: 16,
+              <div style={{
+                marginTop: "1.5rem", borderRadius: 16,
                 border: `1.5px solid ${riskColor.border}`,
                 background: riskColor.bg, padding: "1.5rem",
-                animation: "fadeIn 0.4s ease" }}>
+                animation: "fadeIn 0.4s ease"
+              }}>
 
-                <div style={{ display: "flex", alignItems: "center",
-                  justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  justifyContent: "space-between", marginBottom: "1.25rem"
+                }}>
                   <div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: riskColor.text }}>
                       {getRiskEmoji(result.risk_label)} {result.risk_label}
@@ -425,8 +455,10 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ height: 8, background: "#1e293b",
-                  borderRadius: 99, overflow: "hidden", marginBottom: "1.25rem" }}>
+                <div style={{
+                  height: 8, background: "#1e293b",
+                  borderRadius: 99, overflow: "hidden", marginBottom: "1.25rem"
+                }}>
                   <div style={{
                     height: "100%", borderRadius: 99,
                     width: `${result.approval_probability}%`,
@@ -437,15 +469,19 @@ export default function App() {
                   }} />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
-                  gap: 12, marginBottom: "1.25rem" }}>
+                <div style={{
+                  display: "grid", gridTemplateColumns: "1fr 1fr",
+                  gap: 12, marginBottom: "1.25rem"
+                }}>
                   {[
                     { label: "Approval Probability", val: `${result.approval_probability}%`, color: "#4ade80" },
                     { label: "Rejection Probability", val: `${result.rejection_probability}%`, color: "#f87171" },
                   ].map(s => (
-                    <div key={s.label} style={{ background: "rgba(255,255,255,0.03)",
+                    <div key={s.label} style={{
+                      background: "rgba(255,255,255,0.03)",
                       borderRadius: 10, padding: "12px 16px",
-                      border: "1px solid rgba(255,255,255,0.05)" }}>
+                      border: "1px solid rgba(255,255,255,0.05)"
+                    }}>
                       <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
                       <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{s.label}</div>
                     </div>
@@ -453,12 +489,16 @@ export default function App() {
                 </div>
 
                 <div>
-                  <p style={{ fontSize: 12, color: "#64748b", fontWeight: 600,
-                    letterSpacing: "0.08em", marginBottom: 10 }}>RISK FACTORS DETECTED</p>
+                  <p style={{
+                    fontSize: 12, color: "#64748b", fontWeight: 600,
+                    letterSpacing: "0.08em", marginBottom: 10
+                  }}>RISK FACTORS DETECTED</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {result.risk_factors.map((f, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center",
-                        gap: 8, fontSize: 13, color: "#cbd5e1" }}>
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center",
+                        gap: 8, fontSize: 13, color: "#cbd5e1"
+                      }}>
                         <span style={{ color: result.approved ? "#4ade80" : "#f97316", fontSize: 10 }}>●</span>
                         {f}
                       </div>
