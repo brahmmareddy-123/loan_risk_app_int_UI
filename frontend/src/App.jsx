@@ -29,21 +29,13 @@ const INDIA_STATES = {
   "Chhattisgarh":     ["Raipur","Bhilai","Bilaspur","Korba","Durg","Rajnandgaon","Jagdalpur","Ambikapur","Chirmiri","Dhamtari","Mahasamund","Kanker","Kondagaon","Bastar","Raigarh"],
 };
 
-// ── Land Rate per sq ft (₹) by location type ─────────────────────
-const LAND_RATES = {
-  "Urban":      5000,
-  "Semi-Urban": 2500,
-  "Rural":      800,
-};
-
-const LTV_RATIO = 0.70; // Bank gives max 70% of land value
+const LTV_RATIO = 0.70;
 
 // ── Constants ─────────────────────────────────────────────────────
 const GENDER_OPTIONS     = ["Male", "Female"];
 const EDUCATION_OPTIONS  = ["High School", "Bachelors", "Masters", "PhD"];
 const EMPLOYMENT_OPTIONS = ["Salaried", "Self-Employed", "Unemployed"];
-const LOCATION_OPTIONS   = ["Urban", "Semi-Urban", "Rural"];
-const USD_TO_INR         = 83;
+const USD_TO_INR = 83;
 
 const INITIAL_FORM = {
   age: "", income: "", loan_amount: "", credit_score: 650,
@@ -54,7 +46,7 @@ const INITIAL_FORM = {
 const INITIAL_LAND = {
   enabled: false,
   state: "", district: "",
-  area_sqft: "", location_type: "Urban",
+  area_sqft: "", rate_per_sqft: 0,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -191,10 +183,19 @@ function HistoryTable({ history }) {
 
 // ── Land Collateral Calculator ────────────────────────────────────
 function LandCalculator({ land, setLand }) {
-  const districts = land.state ? INDIA_STATES[land.state] : [];
-  const ratePerSqFt = LAND_RATES[land.location_type] || 0;
+  const districts   = land.state ? INDIA_STATES[land.state] : [];
+  const ratePerSqFt = land.rate_per_sqft || 0;
   const landValue   = land.area_sqft ? land.area_sqft * ratePerSqFt : 0;
   const maxLoan     = Math.round(landValue * LTV_RATIO);
+
+  const fetchRate = async (district) => {
+    if (!district) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/land-rate/${encodeURIComponent(district)}`);
+      const data = await res.json();
+      setLand(l => ({ ...l, rate_per_sqft: data.rate_per_sqft }));
+    } catch { setLand(l => ({ ...l, rate_per_sqft: 2500 })); }
+  };
 
   return (
     <div style={{ marginBottom: "1.75rem" }}>
@@ -224,15 +225,11 @@ function LandCalculator({ land, setLand }) {
             <Field label="District">
               <SelectInput value={land.district} placeholder={land.state ? "Select District" : "Select State first"}
                 options={districts}
-                onChange={v => setLand(l => ({ ...l, district: v }))} />
+                onChange={v => { setLand(l => ({ ...l, district: v })); fetchRate(v); }} />
             </Field>
             <Field label="Land Area (sq ft)">
               <NumInput value={land.area_sqft} placeholder="e.g. 2400"
                 onChange={v => setLand(l => ({ ...l, area_sqft: v }))} />
-            </Field>
-            <Field label="Location Type">
-              <ToggleGroup options={LOCATION_OPTIONS} value={land.location_type}
-                onChange={v => setLand(l => ({ ...l, location_type: v }))} />
             </Field>
           </div>
 
@@ -255,8 +252,9 @@ function LandCalculator({ land, setLand }) {
           {/* LTV Warning */}
           {land.area_sqft > 0 && (
             <div style={{ marginTop: 10, fontSize: 12, color: "#94a3b8", background: "#0c1829", borderRadius: 8, padding: "8px 12px" }}>
-              💡 <strong style={{ color: "#38bdf8" }}>How it works:</strong> Bank evaluates your land at{" "}
-              <strong style={{ color: "#f97316" }}>{fmtINR(ratePerSqFt)}/sq ft</strong> for {land.location_type} area.
+              💡 <strong style={{ color: "#38bdf8" }}>How it works:</strong> Bank evaluates your land in{" "}
+              <strong style={{ color: "#f97316" }}>{land.district}</strong> at{" "}
+              <strong style={{ color: "#f97316" }}>{fmtINR(ratePerSqFt)}/sq ft</strong>.
               Maximum loan = Land Value × 70% LTV Ratio = <strong style={{ color: "#22c55e" }}>{fmtINR(maxLoan)}</strong>
             </div>
           )}
@@ -319,7 +317,7 @@ export default function App() {
   const showWarning = form.income && form.loan_amount && Number(form.loan_amount) > Number(form.income) * 0.6;
 
   // Land LTV check
-  const landValue  = land.enabled && land.area_sqft ? land.area_sqft * (LAND_RATES[land.location_type] || 0) : 0;
+  const landValue  = land.enabled && land.area_sqft ? land.area_sqft * (land.rate_per_sqft || 0) : 0;
   const maxLoan    = Math.round(landValue * LTV_RATIO);
   const landAlert  = land.enabled && land.area_sqft && form.loan_amount && Number(form.loan_amount) > maxLoan;
 
