@@ -126,6 +126,7 @@ def compute_smart_score(data: LoanInput) -> float:
     elif data.credit_score >= 650: score += 20
     elif data.credit_score >= 600: score += 13
     elif data.credit_score >= 500: score += 6
+    else:                          score -= 20  # ✅ penalty for very low score
 
     if data.employment_type == "Salaried":        score += 20
     elif data.employment_type == "Self-Employed": score += 12
@@ -147,8 +148,8 @@ def compute_smart_score(data: LoanInput) -> float:
     return score
 
 def get_risk_label(score):
-    if score >= 60: return "Low Risk", 1
-    if score >= 35: return "Medium Risk", 0
+    if score >= 65: return "Low Risk", 1
+    if score >= 40: return "Medium Risk", 0
     return "High Risk", 0
 
 def get_risk_factors(data: LoanInput) -> list:
